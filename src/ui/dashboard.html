@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tracky</title>
+<style>
+:root {
+    color-scheme: dark;
+    --bg: #111917;
+    --card: #16201D;
+    --row: #1E2B27;
+    --line: #223029;
+    --grid: #1f2c28;
+    --text: #E8F5F1;
+    --muted: #8FA39C;
+    --faint: #62756e;
+    --accent: #3DD6B0;
+    --warn: #e6a23c;
+}
+* { box-sizing: border-box; }
+html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+}
+html { scrollbar-gutter: stable; overflow-y: auto; }
+body { padding: 20px 24px 32px; }
+[hidden] { display: none !important; }
+button { font-family: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* header */
+header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+header img { width: 34px; height: 34px; }
+header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+header .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.brand { display: flex; align-items: center; gap: 12px; margin-right: auto; }
+.datenav { display: flex; align-items: center; gap: 4px; }
+.datenav .label { min-width: 190px; text-align: center; font-weight: 600; }
+.btn {
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color .12s, background .12s;
+}
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.icon { padding: 6px 10px; }
+.live {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px 6px 12px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 13px;
+    max-width: 420px;
+}
+.live .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
+.live.on .dot { background: var(--accent); box-shadow: 0 0 0 3px rgba(61, 214, 176, .18); }
+.live .what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.live .what b { color: var(--text); font-weight: 600; }
+.live .btn { border-radius: 999px; padding: 3px 10px; font-size: 12px; }
+
+/* layout */
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
+.grid { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; margin-top: 12px; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+@media (max-width: 960px) {
+    .tiles { grid-template-columns: repeat(2, 1fr); }
+    .grid { grid-template-columns: 1fr; }
+}
+.card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+    min-width: 0;
+}
+.card h2 {
+    margin: 0 0 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+.card h2 .hint { margin-left: auto; font-weight: 400; color: var(--faint); font-size: 12px; }
+
+/* stat tiles */
+.tile .k { color: var(--muted); font-size: 12px; }
+.tile .v { font-size: 28px; font-weight: 600; margin-top: 6px; letter-spacing: -.01em; }
+.tile .v small { font-size: 15px; color: var(--muted); font-weight: 500; margin-left: 2px; }
+.tile .d { color: var(--faint); font-size: 12px; margin-top: 4px; min-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* legend */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: -4px 0 12px; font-size: 12px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 10px; height: 10px; border-radius: 3px; flex: none; display: inline-block; }
+
+svg { display: block; width: 100%; overflow: visible; }
+svg text { fill: var(--faint); font-size: 11px; font-family: "Segoe UI", system-ui, sans-serif; }
+.hit { fill: transparent; cursor: default; }
+.hit:hover + .hl, .col:hover .hl { opacity: 1; }
+.hl { opacity: 0; fill: rgba(232, 245, 241, .05); pointer-events: none; transition: opacity .1s; }
+.seg { transition: opacity .1s; }
+.dim .seg { opacity: .35; }
+.dim .seg.on { opacity: 1; }
+
+/* bar rows */
+.rows { display: flex; flex-direction: column; gap: 2px; }
+.rowi {
+    display: grid;
+    grid-template-columns: minmax(0, 150px) 1fr 64px 40px;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 8px;
+    margin: 0 -8px;
+    border-radius: 6px;
+}
+.rowi:hover { background: var(--row); }
+.rowi .name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.rowi .name span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.track { height: 8px; background: var(--grid); border-radius: 4px; overflow: hidden; }
+.track i { display: block; height: 100%; border-radius: 4px; }
+.rowi .t { text-align: right; }
+.rowi .p { text-align: right; color: var(--faint); font-size: 12px; }
+
+.apps .rowi { cursor: pointer; grid-template-columns: minmax(0, 170px) 1fr 64px 16px; }
+.apps .chev { color: var(--faint); transition: transform .15s; text-align: center; }
+.apps .open .chev { transform: rotate(90deg); }
+.titles { margin: 2px 0 8px 18px; border-left: 1px solid var(--line); padding-left: 12px; }
+.titles div { display: flex; gap: 12px; padding: 3px 0; font-size: 12px; color: var(--muted); }
+.titles div span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.blocks .b { display: grid; grid-template-columns: 4px 1fr auto; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.blocks .b:first-child { border-top: 0; padding-top: 0; }
+.blocks .bar { border-radius: 2px; }
+.blocks .meta { color: var(--faint); font-size: 12px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.blocks .dur { font-weight: 600; }
+
+.empty { color: var(--faint); padding: 18px 0; text-align: center; font-size: 13px; }
+.bigempty { padding: 60px 20px; text-align: center; color: var(--muted); }
+.bigempty b { display: block; color: var(--text); font-size: 16px; margin-bottom: 6px; }
+
+#tip {
+    position: fixed;
+    pointer-events: none;
+    background: #0c1210;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.45;
+    max-width: 320px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+    z-index: 10;
+}
+#tip .h { font-weight: 600; margin-bottom: 2px; }
+#tip .m { color: var(--muted); }
+#tip .r { display: flex; align-items: center; gap: 8px; }
+#tip .r b { margin-left: auto; padding-left: 14px; font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+    <div class="brand">
+        <img src="{{LOGO}}" alt="">
+        <div>
+            <h1>Tracky</h1>
+            <div class="sub">Only the window you are actively working in is counted</div>
+        </div>
+    </div>
+    <div class="live" id="live">
+        <span class="dot"></span>
+        <span class="what" id="liveText">…</span>
+        <button class="btn" id="pause">Pause</button>
+    </div>
+    <div class="datenav">
+        <button class="btn icon" id="prev" title="Previous day (←)">‹</button>
+        <div class="label" id="dateLabel"></div>
+        <button class="btn icon" id="next" title="Next day (→)">›</button>
+        <button class="btn" id="today">Today</button>
+    </div>
+</header>
+
+<section class="tiles">
+    <div class="card tile"><div class="k">Focus time</div><div class="v num" id="tTotal">–</div><div class="d" id="tTotalD"></div></div>
+    <div class="card tile"><div class="k">Deep work <span title="Uninterrupted blocks of 25+ minutes in Coding, Learning or Design">ⓘ</span></div><div class="v num" id="tDeep">–</div><div class="d" id="tDeepD"></div></div>
+    <div class="card tile"><div class="k">Longest focus block</div><div class="v num" id="tLong">–</div><div class="d" id="tLongD"></div></div>
+    <div class="card tile"><div class="k">App switches</div><div class="v num" id="tSw">–</div><div class="d" id="tSwD"></div></div>
+</section>
+
+<div id="content">
+    <section class="card">
+        <h2>Your day <span class="hint" id="span"></span></h2>
+        <div class="legend" id="legend"></div>
+        <div id="timeline"></div>
+    </section>
+
+    <div class="grid">
+        <section class="card">
+            <h2>Per hour <span class="hint">minutes of focus</span></h2>
+            <div id="hourly"></div>
+        </section>
+        <section class="card">
+            <h2>Categories</h2>
+            <div class="rows" id="cats"></div>
+        </section>
+    </div>
+
+    <div class="grid">
+        <section class="card">
+            <h2>Apps <span class="hint">click an app to see windows &amp; sites</span></h2>
+            <div class="rows apps" id="apps"></div>
+        </section>
+        <div class="stack">
+            <section class="card">
+                <h2>Last 7 days <span class="hint">click a day to open it</span></h2>
+                <div id="week"></div>
+            </section>
+            <section class="card">
+                <h2>Focus blocks <span class="hint">10 min or longer</span></h2>
+                <div class="blocks" id="blocks"></div>
+            </section>
+        </div>
+    </div>
+</div>
+<section class="card bigempty" id="nothing" hidden>
+    <b>Nothing tracked on this day</b>
+    Tracky records the focused window while you work. Idle time and the lock screen are skipped.
+</section>
+<div id="tip" hidden></div>
+
+<script>
+// ------------------------------------------------------------ categories
+const CATS = [
+    { id: "coding", name: "Coding", color: "#3987e5" },
+    { id: "learn", name: "Learning & Writing", color: "#d95926" },
+    { id: "web", name: "Web", color: "#199e70" },
+    { id: "comms", name: "Communication", color: "#c98500" },
+    { id: "design", name: "Design", color: "#d55181" },
+    { id: "media", name: "Media", color: "#008300" },
+    { id: "games", name: "Games", color: "#9085e9" },
+    { id: "other", name: "Other", color: "#5f6f69" },
+];
+const CAT = Object.fromEntries(CATS.map(c => [c.id, c]));
+const DEEP = new Set(["coding", "learn", "design"]);
+
+const APPS = {
+    "code.exe": ["VS Code", "coding"], "cursor.exe": ["Cursor", "coding"], "devenv.exe": ["Visual Studio", "coding"],
+    "idea64.exe": ["IntelliJ IDEA", "coding"], "pycharm64.exe": ["PyCharm", "coding"], "webstorm64.exe": ["WebStorm", "coding"],
+    "rustrover64.exe": ["RustRover", "coding"], "zed.exe": ["Zed", "coding"], "windowsterminal.exe": ["Terminal", "coding"],
+    "powershell.exe": ["PowerShell", "coding"], "pwsh.exe": ["PowerShell", "coding"], "cmd.exe": ["Command Prompt", "coding"],
+    "claude.exe": ["Claude", "coding"], "postman.exe": ["Postman", "coding"], "github desktop.exe": ["GitHub Desktop", "coding"],
+    "pgadmin4.exe": ["pgAdmin", "coding"], "xampp-control.exe": ["XAMPP", "coding"], "dbeaver.exe": ["DBeaver", "coding"],
+    "chrome.exe": ["Chrome", "web"], "msedge.exe": ["Edge", "web"], "firefox.exe": ["Firefox", "web"],
+    "brave.exe": ["Brave", "web"], "opera.exe": ["Opera", "web"], "opera_gx.exe": ["Opera GX", "web"], "arc.exe": ["Arc", "web"],
+    "discord.exe": ["Discord", "comms"], "slack.exe": ["Slack", "comms"], "ms-teams.exe": ["Teams", "comms"],
+    "teams.exe": ["Teams", "comms"], "whatsapp.exe": ["WhatsApp", "comms"], "whatsapp.root.exe": ["WhatsApp", "comms"],
+    "telegram.exe": ["Telegram", "comms"], "outlook.exe": ["Outlook", "comms"], "olk.exe": ["Outlook", "comms"],
+    "thunderbird.exe": ["Thunderbird", "comms"], "zoom.exe": ["Zoom", "comms"],
+    "winword.exe": ["Word", "learn"], "excel.exe": ["Excel", "learn"], "powerpnt.exe": ["PowerPoint", "learn"],
+    "onenote.exe": ["OneNote", "learn"], "notion.exe": ["Notion", "learn"], "obsidian.exe": ["Obsidian", "learn"],
+    "acrobat.exe": ["Acrobat", "learn"], "acrord32.exe": ["Acrobat Reader", "learn"], "notepad.exe": ["Notepad", "learn"],
+    "notepad++.exe": ["Notepad++", "learn"],
+    "figma.exe": ["Figma", "design"], "photoshop.exe": ["Photoshop", "design"], "illustrator.exe": ["Illustrator", "design"],
+    "blender.exe": ["Blender", "design"], "affinity.exe": ["Affinity", "design"], "paint.net.exe": ["Paint.NET", "design"],
+    "spotify.exe": ["Spotify", "media"], "vlc.exe": ["VLC", "media"], "medal.exe": ["Medal", "media"], "netflix.exe": ["Netflix", "media"],
+    "steam.exe": ["Steam", "games"], "steamwebhelper.exe": ["Steam", "games"], "riotclientux.exe": ["Riot Client", "games"],
+    "leagueclientux.exe": ["League of Legends", "games"], "league of legends.exe": ["League of Legends", "games"],
+    "valorant-win64-shipping.exe": ["Valorant", "games"], "cs2.exe": ["Counter-Strike 2", "games"],
+    "fortniteclient-win64-shipping.exe": ["Fortnite", "games"], "robloxplayerbeta.exe": ["Roblox", "games"],
+    "minecraft.exe": ["Minecraft", "games"], "javaw.exe": ["Minecraft", "games"], "rocketleague.exe": ["Rocket League", "games"],
+    "xboxpcapp.exe": ["Xbox", "games"], "gamebar.exe": ["Xbox Game Bar", "games"],
+    "explorer.exe": ["Explorer", "other"], "systemsettings.exe": ["Settings", "other"], "snipy.exe": ["Snipy", "other"],
+};
+const BROWSER_SUFFIX = /\s*[-–—]\s*(Google Chrome|Microsoft​? Edge|Mozilla Firefox|Brave|Opera( GX)?|Arc)$/i;
+const PROFILE_SUFFIX = /\s*[-–—]\s*(Persönlich|Personal|Work|Arbeit|Profil \d+|Profile \d+)$/i;
+// Browser tabs that belong somewhere else
+const WEB_RULES = [
+    [/github|gitlab|stack ?overflow|localhost|127\.0\.0\.1|mdn|docs\.rs|crates\.io|vercel|npm|claude|chatgpt|regex/i, "coding"],
+    [/youtube|netflix|twitch|prime video|disney\+|spotify|crunchyroll/i, "media"],
+    [/whatsapp|discord|gmail|outlook|teams|instagram|messenger|slack/i, "comms"],
+    [/figma|canva|dribbble|behance/i, "design"],
+    [/moodle|wikipedia|duden|deepl|google docs|google sheets|quizlet|anton|learny|simpleclub|studyflix|notion/i, "learn"],
+];
+
+function classify(exe, rawTitle) {
+    let [app, cat] = APPS[exe] || [exe.replace(/\.exe$/, "").replace(/^./, c => c.toUpperCase()), "other"];
+    let title = rawTitle;
+    if (cat === "web") {
+        title = title.replace(BROWSER_SUFFIX, "").replace(PROFILE_SUFFIX, "").replace(BROWSER_SUFFIX, "");
+        for (const [rx, c] of WEB_RULES) if (rx.test(title)) { cat = c; break; }
+    }
+    return { app, cat, title: title || "(untitled)" };
+}
+
+// ------------------------------------------------------------ helpers
+const $ = id => document.getElementById(id);
+const DAY = 86400000;
+const pad = n => String(n).padStart(2, "0");
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseIso = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const clock = ms => { const d = new Date(ms); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function dur(sec, long) {
+    sec = Math.round(sec);
+    if (sec < 60) return `${sec}s`;
+    const m = Math.round(sec / 60);
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60), r = m % 60;
+    return long ? `${h}h ${pad(r)}m` : (r ? `${h}h ${r}m` : `${h}h`);
+}
+function bigDur(sec) {
+    const m = Math.round(sec / 60);
+    if (m < 60) return `${m}<small>m</small>`;
+    return `${Math.floor(m / 60)}<small>h</small> ${pad(m % 60)}<small>m</small>`;
+}
+const svgEl = (w, h, inner) => `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">${inner}</svg>`;
+// rect with only the top corners rounded (data end), anchored to the baseline
+function topRounded(x, y, w, h, r) {
+    r = Math.min(r, h, w / 2);
+    if (h <= 0) return "";
+    return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+}
+
+// ------------------------------------------------------------ tooltip
+const tip = $("tip");
+function showTip(html, ev) {
+    tip.innerHTML = html;
+    tip.hidden = false;
+    moveTip(ev);
+}
+function moveTip(ev) {
+    const pad = 14, r = tip.getBoundingClientRect();
+    let x = ev.clientX + pad, y = ev.clientY + pad;
+    if (x + r.width > innerWidth - 8) x = ev.clientX - r.width - pad;
+    if (y + r.height > innerHeight - 8) y = ev.clientY - r.height - pad;
+    tip.style.left = Math.max(8, x) + "px";
+    tip.style.top = Math.max(8, y) + "px";
+}
+const hideTip = () => { tip.hidden = true; };
+function bindTips(root, fn) {
+    root.querySelectorAll("[data-tip]").forEach(el => {
+        el.addEventListener("mouseenter", e => showTip(fn(el.dataset.tip), e));
+        el.addEventListener("mousemove", moveTip);
+        el.addEventListener("mouseleave", hideTip);
+    });
+}
+const catRow = (c, sec) => `<div class="r"><span class="sw" style="background:${CAT[c].color}"></span>${CAT[c].name}<b>${dur(sec)}</b></div>`;
+
+// ------------------------------------------------------------ data
+let day = new Date(); day = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+let report = null, week = null;
+
+function sessionsFor(rows, date) {
+    const t0 = parseIso(date).getTime(), t1 = t0 + DAY;
+    const out = [];
+    for (const [s0, e0, exe, raw] of rows || []) {
+        const s = Math.max(s0, t0), e = Math.min(e0, t1);
+        if (e - s < 1000) continue;
+        const prev = out[out.length - 1];
+        // chunks of one long session are stored as several rows
+        if (prev && prev.exe === exe && prev.raw === raw && s - prev.e < 3000) { prev.e = e; continue; }
+        out.push({ s, e, exe, raw, ...classify(exe, raw) });
+    }
+    return out.sort((a, b) => a.s - b.s);
+}
+
+function blocksOf(ss, gap = 120000, tolerate = 60000) {
+    const blocks = [];
+    for (const x of ss) {
+        const b = blocks[blocks.length - 1], len = x.e - x.s;
+        if (b && x.s - b.e < gap && (x.cat === b.cat || len < tolerate)) {
+            b.e = Math.max(b.e, x.e);
+            if (x.cat === b.cat) b.apps[x.app] = (b.apps[x.app] || 0) + len;
+        } else {
+            blocks.push({ cat: x.cat, s: x.s, e: x.e, apps: { [x.app]: len } });
+        }
+    }
+    return blocks;
+}
+
+function analyse(ss) {
+    const total = ss.reduce((a, x) => a + (x.e - x.s), 0) / 1000;
+    const byCat = Object.fromEntries(CATS.map(c => [c.id, 0]));
+    const apps = {};
+    const hourly = Array.from({ length: 24 }, () => Object.fromEntries(CATS.map(c => [c.id, 0])));
+    let switches = 0, lastApp = null;
+    for (const x of ss) {
+        const sec = (x.e - x.s) / 1000;
+        byCat[x.cat] += sec;
+        const a = apps[x.app] ||= { app: x.app, cat: x.cat, sec: 0, titles: {}, cats: {} };
+        a.sec += sec;
+        a.cats[x.cat] = (a.cats[x.cat] || 0) + sec;
+        a.titles[x.title] = (a.titles[x.title] || 0) + sec;
+        for (let t = x.s; t < x.e;) {
+            const d = new Date(t);
+            const next = Math.min(x.e, new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours() + 1).getTime());
+            hourly[d.getHours()][x.cat] += (next - t) / 1000;
+            t = next;
+        }
+        if (x.app !== lastApp) { if (lastApp) switches++; lastApp = x.app; }
+    }
+    // an app's colour is the category it spent most time in (e.g. a browser on GitHub)
+    for (const a of Object.values(apps)) a.cat = Object.entries(a.cats).sort((p, q) => q[1] - p[1])[0][0];
+    const blocks = blocksOf(ss).filter(b => b.e - b.s >= 600000).sort((a, b) => (b.e - b.s) - (a.e - a.s));
+    const deep = blocks.filter(b => DEEP.has(b.cat) && b.e - b.s >= 1500000);
+    return {
+        ss, total, byCat, hourly, switches, blocks,
+        apps: Object.values(apps).sort((a, b) => b.sec - a.sec),
+        deep: deep.reduce((a, b) => a + (b.e - b.s), 0) / 1000, deepCount: deep.length,
+    };
+}
+
+async function load() {
+    const date = iso(day);
+    const dates = Array.from({ length: 7 }, (_, i) => iso(addDays(day, i - 6)));
+    const data = await fetch(`/api/sessions?dates=${dates.join(",")}`).then(r => r.json());
+    report = analyse(sessionsFor(data[date], date));
+    week = dates.map(d => ({ date: d, ...analyse(sessionsFor(data[d], d)) }));
+    render();
+}
+window.refresh = () => load().catch(console.error);
+
+// ------------------------------------------------------------ render
+function render() {
+    const r = report, isToday = iso(day) === iso(new Date());
+    $("dateLabel").textContent = isToday ? "Today" :
+        day.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+    $("next").disabled = isToday;
+    $("today").disabled = isToday;
+
+    const empty = r.ss.length === 0;
+    $("content").hidden = empty;
+    $("nothing").hidden = !empty;
+    renderTiles(r);
+    renderWeek();
+    if (empty) return;
+    renderLegend(r);
+    renderTimeline(r);
+    renderHourly(r);
+    renderCats(r);
+    renderApps(r);
+    renderBlocks(r);
+}
+
+function renderTiles(r) {
+    $("tTotal").innerHTML = r.total ? bigDur(r.total) : "0<small>m</small>";
+    $("tTotalD").textContent = r.ss.length ? `${clock(r.ss[0].s)} – ${clock(r.ss[r.ss.length - 1].e)}` : "";
+    const prev = week.slice(0, 6).filter(d => d.total > 0);
+    if (prev.length && r.total) {
+        const avg = prev.reduce((a, d) => a + d.total, 0) / prev.length;
+        const diff = r.total - avg;
+        $("tTotalD").textContent += ` · ${diff >= 0 ? "+" : "−"}${dur(Math.abs(diff))} vs. 6-day avg`;
+    }
+    $("tDeep").innerHTML = bigDur(r.deep);
+    $("tDeepD").textContent = r.total ? `${Math.round(r.deep / r.total * 100)}% of focus · ${r.deepCount} block${r.deepCount === 1 ? "" : "s"}` : "";
+    const L = r.blocks[0];
+    $("tLong").innerHTML = L ? bigDur((L.e - L.s) / 1000) : "–";
+    $("tLongD").textContent = L ? `${CAT[L.cat].name} · ${clock(L.s)} – ${clock(L.e)}` : "";
+    const perH = r.total ? r.switches / Math.max(1, r.total / 3600) : 0;
+    $("tSw").innerHTML = r.switches;
+    $("tSwD").textContent = r.total ? `${perH.toFixed(1)} per hour of focus` : "";
+}
+
+function renderLegend(r) {
+    $("legend").innerHTML = CATS.filter(c => r.byCat[c.id] > 0)
+        .map(c => `<span><i class="sw" style="background:${c.color}"></i>${c.name}</span>`).join("");
+}
+
+function renderTimeline(r) {
+    const el = $("timeline");
+    el.innerHTML = ""; // measure without the previous drawing
+    const W = el.clientWidth || 800, H = 64, barY = 4, barH = 34;
+    const first = r.ss[0].s, last = r.ss[r.ss.length - 1].e;
+    const base = parseIso(iso(day)).getTime();
+    let h0 = Math.floor((first - base) / 3600000), h1 = Math.ceil((last - base) / 3600000);
+    while (h1 - h0 < 6) { if (h0 > 0) h0--; if (h1 - h0 < 6 && h1 < 24) h1++; }
+    const t0 = base + h0 * 3600000, t1 = base + h1 * 3600000;
+    const x = t => (t - t0) / (t1 - t0) * W;
+    $("span").textContent = `${clock(first)} – ${clock(last)}`;
+
+    // join neighbouring sessions of the same category so the strip stays readable
+    const segs = [];
+    for (const s of r.ss) {
+        const p = segs[segs.length - 1];
+        if (p && p.cat === s.cat && s.s - p.e < 30000) { p.e = s.e; p.items.push(s); }
+        else segs.push({ cat: s.cat, s: s.s, e: s.e, items: [s] });
+    }
+    let g = `<rect x="0" y="${barY}" width="${W}" height="${barH}" rx="4" fill="var(--grid)"/>`;
+    const step = (h1 - h0) > 14 ? 2 : 1;
+    for (let h = h0; h <= h1; h += step) {
+        const xx = x(base + h * 3600000);
+        g += `<line x1="${xx}" x2="${xx}" y1="${barY + barH}" y2="${barY + barH + 5}" stroke="var(--line)"/>`;
+        g += `<text x="${Math.min(W - 14, Math.max(14, xx))}" y="${H - 4}" text-anchor="middle">${pad(h % 24)}:00</text>`;
+    }
+    segs.forEach((s, i) => {
+        const xs = x(s.s), w = Math.max(1.5, x(s.e) - xs);
+        g += `<rect class="seg" x="${xs}" y="${barY}" width="${w}" height="${barH}" rx="${w > 8 ? 3 : 0}" fill="${CAT[s.cat].color}"/>`;
+        g += `<rect class="hit" data-tip="${i}" x="${xs - 2}" y="0" width="${w + 4}" height="${barY + barH + 4}"/>`;
+    });
+    el.innerHTML = svgEl(W, H, g);
+    bindTips(el, i => {
+        const s = segs[i], apps = {};
+        for (const it of s.items) {
+            const k = it.app + "\u0000" + it.title;
+            apps[k] = (apps[k] || 0) + (it.e - it.s) / 1000;
+        }
+        const top = Object.entries(apps).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => {
+            const [app, title] = k.split("\u0000");
+            return `<div class="r"><span class="m" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px">${esc(app)} · ${esc(title)}</span><b>${dur(v)}</b></div>`;
+        }).join("");
+        return `<div class="h"><span class="sw" style="background:${CAT[s.cat].color};margin-right:6px"></span>${CAT[s.cat].name} · ${dur((s.e - s.s) / 1000)}</div>
+                <div class="m">${clock(s.s)} – ${clock(s.e)}</div>${top}`;
+    });
+}
+
+// stacked columns; shared by the hourly and the weekly chart
+function columns(el, values, { max, labels, ticks, fmtTick, tipFor, onClick, active }) {
+    el.innerHTML = "";
+    const W = el.clientWidth || 600, H = 200, left = 30, bottom = 22, top = 6;
+    const plotH = H - bottom - top, n = values.length, slot = (W - left) / n;
+    const bw = Math.max(4, Math.min(slot * 0.62, 44));
+    const y = v => top + plotH - v / max * plotH;
+    let g = "";
+    for (const t of ticks) {
+        g += `<line x1="${left}" x2="${W}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)"/>`;
+        g += `<text x="${left - 8}" y="${y(t) + 4}" text-anchor="end">${fmtTick(t)}</text>`;
+    }
+    g += `<line x1="${left}" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line)"/>`;
+    values.forEach((v, i) => {
+        const cx = left + slot * i + slot / 2, x0 = cx - bw / 2;
+        const parts = CATS.filter(c => v[c.id] > 0);
+        let acc = 0, inner = "";
+        parts.forEach((c, k) => {
+            const y1 = y(acc + v[c.id]), h = y(acc) - y1;
+            acc += v[c.id];
+            if (h < 0.5) return;
+            const isTop = k === parts.length - 1;
+            // 2px surface gap between stacked segments
+            inner += isTop
+                ? `<path d="${topRounded(x0, y1, bw, h, 4)}" fill="${c.color}" stroke="var(--card)" stroke-width="2" paint-order="stroke"/>`
+                : `<rect x="${x0}" y="${y1}" width="${bw}" height="${h}" fill="${c.color}" stroke="var(--card)" stroke-width="2" paint-order="stroke"/>`;
+        });
+        const lbl = labels[i];
+        g += `<g class="col" data-tip="${i}" ${onClick ? 'style="cursor:pointer"' : ""}>
+              <rect class="hl" x="${left + slot * i + 1}" y="${top}" width="${slot - 2}" height="${plotH}" rx="4"/>
+              ${inner}
+              <rect class="hit" x="${left + slot * i}" y="0" width="${slot}" height="${H}"/>
+              ${lbl ? `<text x="${cx}" y="${H - 5}" text-anchor="middle" ${i === active ? 'style="fill:var(--text);font-weight:600"' : ""}>${lbl}</text>` : ""}
+              </g>`;
+    });
+    el.innerHTML = svgEl(W, H, g);
+    bindTips(el, i => tipFor(+i));
+    if (onClick) el.querySelectorAll(".col").forEach(c => c.addEventListener("click", () => onClick(+c.dataset.tip)));
+}
+
+function renderHourly(r) {
+    const vals = r.hourly.map(h => Object.fromEntries(CATS.map(c => [c.id, h[c.id] / 60])));
+    const el = $("hourly"), narrow = (el.clientWidth || 600) < 520;
+    columns(el, vals, {
+        max: 60, ticks: [15, 30, 45, 60], fmtTick: t => t,
+        labels: vals.map((_, h) => (h % (narrow ? 6 : 3) === 0 ? pad(h) : "")),
+        tipFor: h => {
+            const rows = CATS.filter(c => r.hourly[h][c.id] > 0).map(c => catRow(c.id, r.hourly[h][c.id])).join("");
+            const tot = CATS.reduce((a, c) => a + r.hourly[h][c.id], 0);
+            return `<div class="h">${pad(h)}:00 – ${pad((h + 1) % 24)}:00 · ${dur(tot)}</div>${rows || '<div class="m">no focus time</div>'}`;
+        },
+    });
+}
+
+function renderWeek() {
+    const el = $("week");
+    const vals = week.map(d => Object.fromEntries(CATS.map(c => [c.id, d.byCat[c.id] / 3600])));
+    const maxH = Math.max(1, ...week.map(d => d.total / 3600));
+    const step = maxH > 8 ? 4 : maxH > 4 ? 2 : 1, max = Math.ceil(maxH / step) * step;
+    const ticks = []; for (let t = step; t <= max; t += step) ticks.push(t);
+    columns(el, vals, {
+        max, ticks, fmtTick: t => t + "h", active: 6,
+        labels: week.map(d => parseIso(d.date).toLocaleDateString("en-GB", { weekday: "short" })),
+        tipFor: i => {
+            const d = week[i];
+            const rows = CATS.filter(c => d.byCat[c.id] > 0).map(c => catRow(c.id, d.byCat[c.id])).join("");
+            const label = parseIso(d.date).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" });
+            return `<div class="h">${label} · ${dur(d.total, true)}</div>${rows || '<div class="m">nothing tracked</div>'}`;
+        },
+        onClick: i => { day = parseIso(week[i].date); refresh(); },
+    });
+}
+
+function renderCats(r) {
+    const list = CATS.filter(c => r.byCat[c.id] > 0).sort((a, b) => r.byCat[b.id] - r.byCat[a.id]);
+    const max = r.byCat[list[0].id];
+    $("cats").innerHTML = list.map(c => `
+        <div class="rowi">
+            <div class="name"><span class="sw" style="background:${c.color}"></span><span>${c.name}</span></div>
+            <div class="track"><i style="width:${r.byCat[c.id] / max * 100}%;background:${c.color}"></i></div>
+            <div class="t num">${dur(r.byCat[c.id], true)}</div>
+            <div class="p num">${Math.round(r.byCat[c.id] / r.total * 100)}%</div>
+        </div>`).join("");
+}
+
+const openApps = new Set();
+function renderApps(r) {
+    const list = r.apps.slice(0, 12), max = list[0].sec;
+    $("apps").innerHTML = list.map((a, i) => {
+        const titles = Object.entries(a.titles).sort((p, q) => q[1] - p[1]).slice(0, 8);
+        const open = openApps.has(a.app);
+        return `<div class="rowi ${open ? "open" : ""}" data-app="${esc(a.app)}">
+                <div class="name"><span class="sw" style="background:${CAT[a.cat].color}"></span><span>${esc(a.app)}</span></div>
+                <div class="track"><i style="width:${a.sec / max * 100}%;background:${CAT[a.cat].color}"></i></div>
+                <div class="t num">${dur(a.sec, true)}</div>
+                <div class="chev">›</div>
+            </div>
+            <div class="titles" ${open ? "" : "hidden"}>${titles.map(([t, s]) =>
+                `<div><span title="${esc(t)}">${esc(t)}</span><span class="num">${dur(s)}</span></div>`).join("")}</div>`;
+    }).join("") + (r.apps.length > 12 ? `<div class="empty">+ ${r.apps.length - 12} more apps · ${dur(r.apps.slice(12).reduce((a, x) => a + x.sec, 0))}</div>` : "");
+    $("apps").querySelectorAll(".rowi").forEach(row => row.addEventListener("click", () => {
+        const app = row.dataset.app;
+        openApps.has(app) ? openApps.delete(app) : openApps.add(app);
+        row.classList.toggle("open");
+        row.nextElementSibling.hidden = !row.classList.contains("open");
+    }));
+}
+
+function renderBlocks(r) {
+    const list = r.blocks.slice(0, 6);
+    $("blocks").innerHTML = list.length ? list.map(b => {
+        const apps = Object.entries(b.apps).sort((p, q) => q[1] - p[1]).slice(0, 3).map(([a]) => esc(a)).join(", ");
+        return `<div class="b">
+            <div class="bar" style="background:${CAT[b.cat].color}"></div>
+            <div><div>${CAT[b.cat].name}</div><div class="meta">${clock(b.s)} – ${clock(b.e)} · ${apps}</div></div>
+            <div class="dur num">${dur((b.e - b.s) / 1000, true)}</div>
+        </div>`;
+    }).join("") : `<div class="empty">No block of 10 minutes or more yet. Stay on one thing a little longer.</div>`;
+}
+
+// ------------------------------------------------------------ live status
+let paused = false;
+async function status() {
+    try {
+        const s = await fetch("/api/status").then(r => r.json());
+        paused = s.paused;
+        $("live").classList.toggle("on", !s.paused && !!s.exe);
+        $("pause").textContent = s.paused ? "Resume" : "Pause";
+        if (s.paused) $("liveText").textContent = "Tracking paused";
+        else if (s.exe) {
+            const c = classify(s.exe, s.title);
+            $("liveText").innerHTML = `<b>${esc(c.app)}</b> · ${dur((Date.now() - s.since) / 1000)} · ${esc(c.title)}`;
+        } else $("liveText").textContent = "Idle – nothing focused right now";
+    } catch (e) { console.error(e); }
+}
+$("pause").addEventListener("click", async () => {
+    await fetch(`/api/pause?on=${!paused}`);
+    status();
+});
+
+// ------------------------------------------------------------ navigation
+const go = n => { const d = addDays(day, n); if (d <= new Date()) { day = d; refresh(); } };
+$("prev").addEventListener("click", () => go(-1));
+$("next").addEventListener("click", () => go(1));
+$("today").addEventListener("click", () => { const n = new Date(); day = new Date(n.getFullYear(), n.getMonth(), n.getDate()); refresh(); });
+addEventListener("keydown", e => { if (e.key === "ArrowLeft") go(-1); if (e.key === "ArrowRight") go(1); });
+// charts are drawn at their measured width; redraw when it changes (window resize, scrollbar appearing)
+let lastW = 0, raf = 0;
+new ResizeObserver(([e]) => {
+    const w = Math.round(e.contentRect.width);
+    if (w === lastW || !report) return;
+    lastW = w;
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(render);
+}).observe(document.body);
+
+refresh();
+status();
+setInterval(status, 5000);
+setInterval(() => { if (!document.hidden && iso(day) === iso(new Date())) refresh(); }, 30000);
+</script>
+</body>
+</html>
