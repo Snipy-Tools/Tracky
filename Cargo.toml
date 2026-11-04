@@ -1,0 +1,28 @@
+[package]
+name = "tracky"
+version = "0.1.0"
+edition = "2024"
+description = "Tracks the window you are focused on and shows your day in a dashboard"
+
+[dependencies]
+resvg = "0.48.1"
+tao = "0.37.1"
+tray-icon = "0.26.0"
+windows = { version = "0.62.2", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Registry",
+    "Win32_System_SystemInformation",
+    "Win32_System_Threading",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+] }
+wry = "0.57.0"
+
+[build-dependencies]
+winresource = "0.1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
